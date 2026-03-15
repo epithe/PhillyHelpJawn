@@ -80,7 +80,7 @@ export const SearchResourcesInputSchema = z.object({
   category: z
     .string()
     .describe(
-      'The type of resource: "Shelter", "Food", etc. Leave empty to search all categories.'
+      'The type of resource: "Shelter", "Food", "Job services". Leave empty to search all categories.'
     )
     .optional(),
   eligibility: z
