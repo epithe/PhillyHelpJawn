@@ -139,7 +139,7 @@ export async function handleQuery(queryText: string): Promise<AgentResult> {
   if (!usedAnyTool) {
     return {
       message:
-        "I can help you find food, shelter, and other services in Philadelphia. What do you need help with?",
+        "I'm not sure how to help with that, but I can help you find food, shelter, and other services in Philadelphia. You can also call 211 for more help.",
       resources: [],
       crisis: null,
     };
