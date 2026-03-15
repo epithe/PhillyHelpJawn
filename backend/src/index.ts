@@ -48,7 +48,7 @@ app.post("/v1/assist/query", async (c) => {
   const req = parsed.data;
 
   try {
-    const { message, resources, crisis } = await handleQuery(req.queryText, {
+    const { message, resources, crisis, actionPhone } = await handleQuery(req.queryText, {
       location: req.location,
     });
 
@@ -77,6 +77,7 @@ app.post("/v1/assist/query", async (c) => {
       message,
       resources: resourcesWithDistance,
       crisis,
+      actionPhone,
     };
 
     return c.json(response);
@@ -88,6 +89,7 @@ app.post("/v1/assist/query", async (c) => {
       message: "Sorry, I'm having trouble right now. Please try again.",
       resources: [],
       crisis: null,
+      actionPhone: null,
     };
     return c.json(response);
   }

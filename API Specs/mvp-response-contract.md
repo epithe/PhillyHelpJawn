@@ -42,7 +42,8 @@ This document defines the response payload that the backend returns for assist q
       "description": null
     }
   ],
-  "crisis": null
+  "crisis": null,
+  "actionPhone": null
 }
 ```
 
@@ -57,6 +58,7 @@ This document defines the response payload that the backend returns for assist q
 | `message`    | string | Yes      | Plain-language text for text-to-speech. Short, simple sentences at ~4th-grade reading level. |
 | `resources`  | array  | Yes      | Matching resources. May be empty if none found.              |
 | `crisis`     | string | Yes      | Crisis type if detected: `"suicide"`, `"emergency"`, or `"child_safety"`. `null` if no crisis. |
+| `actionPhone` | string | Yes     | Phone number the client should show as a prominent call button. `"988"` for suicide crisis, `"911"` for emergency, `"18009320313"` for child safety, `"211"` when no resources found. `null` for normal responses with results. |
 
 ### Resource Object
 

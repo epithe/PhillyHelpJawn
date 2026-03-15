@@ -142,10 +142,17 @@ export type RedirectReason =
   | "gratitude"
   | "meta_question";
 
+const CRISIS_PHONES: Record<CrisisType, string> = {
+  suicide: "988",
+  emergency: "911",
+  child_safety: "18009320313",
+};
+
 export interface AgentResult {
   message: string;
   resources: Resource[];
   crisis: CrisisType | null;
+  actionPhone: string | null;
 }
 
 export async function handleQuery(
@@ -231,12 +238,29 @@ export async function handleQuery(
         "I'm not sure how to help with that, but I can help you find food, shelter, and other services in Philadelphia. You can also call 211 for more help.",
       resources: [],
       crisis: null,
+      actionPhone: "211",
     };
   }
 
+  let message = textBlock?.text ?? "Sorry, I could not find an answer right now.";
+
+  // Guarantee 211 mention when no resources found
+  if (collectedResources.length === 0 && detectedCrisis === null && !message.includes("211")) {
+    message += " You can also call 211 for help.";
+  }
+
+  // Determine actionPhone
+  let actionPhone: string | null = null;
+  if (detectedCrisis) {
+    actionPhone = CRISIS_PHONES[detectedCrisis];
+  } else if (collectedResources.length === 0) {
+    actionPhone = "211";
+  }
+
   return {
-    message: textBlock?.text ?? "Sorry, I could not find an answer right now.",
+    message,
     resources: collectedResources,
     crisis: detectedCrisis,
+    actionPhone,
   };
 }
