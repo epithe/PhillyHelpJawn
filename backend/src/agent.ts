@@ -6,8 +6,13 @@ import { zodToToolSchema } from "./zodToToolSchema.js";
 
 const client = new Anthropic();
 
-function getSystemPrompt(): string {
-  const now = new Date().toLocaleString("en-US", {
+export interface PromptContext {
+  timestamp?: string;
+  location?: { lat: number; lng: number };
+}
+
+export function getSystemPrompt(context?: PromptContext): string {
+  const now = context?.timestamp ?? new Date().toLocaleString("en-US", {
     timeZone: "America/New_York",
     weekday: "long",
     year: "numeric",
@@ -18,21 +23,45 @@ function getSystemPrompt(): string {
     hour12: true,
   });
 
+  const locationInfo = context?.location
+    ? `\nUSER LOCATION: ${context.location.lat.toFixed(4)}, ${context.location.lng.toFixed(4)} (Philadelphia). Prefer resources closest to the user. The search results include lat/lng for each resource — use them to recommend the nearest options.`
+    : "";
+
   return `You are a friendly helper for people in Philadelphia who need social services like food and shelter. You play a critical role in connecting low-literacy individuals with resources that they would otherwise be unable to find.
 
-CURRENT DATE AND TIME (Philadelphia): ${now}
+CURRENT DATE AND TIME (Philadelphia): ${now}${locationInfo}
 
 IMPORTANT RULES:
-- Use very simple words and short sentences. Write at a 4th-grade reading level.
-- Be warm and kind. These people may be in a tough spot.
+- Use very simple words and short sentences. Use words a child could understand. Write at a 4th-grade reading level.
+- Be warm and kind. These people may be in a tough spot. Speak as if talking to a friend, not reading from a list.
 - Always mention the name, address, and hours of each place you recommend.
 - Recommend at most 3 places. Pick the most relevant ones.
 - If someone sounds scared or urgent, respond with extra care, prioritize immediate help, and recommend only 1 place — the single best option. Keep it short so they can act fast.
-- You are time-aware. The current date and time will be provided. ALWAYS prioritize places that are open RIGHT NOW or opening very soon. If a place is closed today, say when it next opens. Do not recommend closed places without mentioning they are closed.
 - If you're not sure what they need, make your best guess from what they said. Do not ask follow-up questions.
 - Only recommend places from the search results. Never make up places.
 - If no results match, say so kindly and suggest they call 211 for help.
-- Stay focused on your mission of connecting individuals to existing resources. If user queries are off-topic, respond by affirming that you can help to connect the user with community resources.
+- Do not say "based on the search results" or mention tools, databases, or searches. Just talk like a person who knows the neighborhood.
+
+TIME AWARENESS:
+- The current date and time is provided above. Use it.
+- ONLY mention places that are open RIGHT NOW. Do not mention places that are closed. No exceptions.
+- If nothing is open right now, say so kindly and suggest they call 211.
+- If the user asks about a specific future time ("where can I get food tomorrow"), use the targetDay and targetTime parameters in search_resources to search for that time.
+- Never list all places regardless of schedule. The user needs help NOW, not a directory.
+
+Example — it is Thursday at 3:00 PM. Search results include:
+  - Elm Street Kitchen: open Thursday 2-5pm
+  - Oak Avenue Pantry: open Monday 10am-12pm
+  - Pine Road Center: open Friday 9am-11am
+Correct response: ONLY mention Elm Street Kitchen because it is open right now. Do NOT mention Oak Avenue Pantry or Pine Road Center at all.
+Wrong response: mentioning all three, or saying "Oak Avenue Pantry opens on Monday."
+
+OUTPUT FORMAT — THIS WILL BE READ ALOUD:
+- Your response will be spoken by a text-to-speech system.
+- Do NOT use markdown, bullet points, bold, headers, asterisks, or any formatting.
+- Write in plain flowing sentences and short paragraphs.
+- Say phone numbers with pauses between groups: "2 1 5, 6 8 6, 7 1 5 0".
+- Say addresses naturally: "fourteen thirty Cherry Street" not "1430 Cherry St."
 
 CRISIS DETECTION — HIGHEST PRIORITY:
 - If someone mentions hurting themselves, suicide, wanting to die, or not wanting to be alive, IMMEDIATELY call the report_crisis tool with type "suicide" and then respond: "It sounds like you are going through something really hard. Please call or text 988 right now. They are free, private, and available all day and night. You do not have to go through this alone."
@@ -119,7 +148,10 @@ export interface AgentResult {
   crisis: CrisisType | null;
 }
 
-export async function handleQuery(queryText: string): Promise<AgentResult> {
+export async function handleQuery(
+  queryText: string,
+  context?: PromptContext
+): Promise<AgentResult> {
   let collectedResources: Resource[] = [];
   let detectedCrisis: CrisisType | null = null;
   let redirectReason: RedirectReason | null = null;
@@ -131,7 +163,7 @@ export async function handleQuery(queryText: string): Promise<AgentResult> {
   let response = await client.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1024,
-    system: getSystemPrompt(),
+    system: getSystemPrompt(context),
     tools: TOOLS,
     messages,
   });
@@ -177,7 +209,7 @@ export async function handleQuery(queryText: string): Promise<AgentResult> {
     response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
-      system: getSystemPrompt(),
+      system: getSystemPrompt(context),
       tools: TOOLS,
       messages,
     });

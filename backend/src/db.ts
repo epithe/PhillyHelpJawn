@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { SearchResourcesInputSchema } from "./types.js";
+import { isOpenAt } from "./schedule.js";
 import type { Resource } from "./types.js";
 
 const supabase = createClient(
@@ -16,7 +17,7 @@ export async function searchResources(
     return [];
   }
 
-  const { category, eligibility } = parsed.data;
+  const { category, eligibility, targetDay, targetTime } = parsed.data;
   let query = supabase.from("resources").select("*");
 
   if (category) {
@@ -34,5 +35,10 @@ export async function searchResources(
     return [];
   }
 
-  return data as Resource[];
+  const allResults = data as (Resource & { schedule?: any })[];
+
+  // Filter to resources open at the target time (defaults to now)
+  return allResults.filter((r) =>
+    isOpenAt(r.schedule, { targetDay, targetTime })
+  );
 }

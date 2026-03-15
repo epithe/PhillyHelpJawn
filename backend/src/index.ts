@@ -11,6 +11,23 @@ import type {
   ResourceWithDistance,
 } from "./types.js";
 
+function formatPhone(raw: string): string {
+  // Handle comma-separated multiple numbers
+  return raw
+    .split(",")
+    .map((num) => {
+      const digits = num.trim().replace(/\D/g, "");
+      if (digits.length === 10) {
+        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+      }
+      if (digits.length === 11 && digits[0] === "1") {
+        return `1-${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
+      }
+      return num.trim();
+    })
+    .join(", ");
+}
+
 const app = new Hono();
 app.use("*", cors());
 
@@ -31,11 +48,14 @@ app.post("/v1/assist/query", async (c) => {
   const req = parsed.data;
 
   try {
-    const { message, resources, crisis } = await handleQuery(req.queryText);
+    const { message, resources, crisis } = await handleQuery(req.queryText, {
+      location: req.location,
+    });
 
     const resourcesWithDistance: ResourceWithDistance[] = resources.map(
       (r) => ({
         ...r,
+        phone: r.phone ? formatPhone(r.phone) : null,
         distanceKm: req.location
           ? Math.round(
               computeDistance(req.location.lat, req.location.lng, r.lat, r.lng) *

@@ -88,6 +88,18 @@ export const SearchResourcesInputSchema = z.object({
       'Filter by who can use it, e.g. "family", "youth", "male", "female". Leave empty for no filter.'
     )
     .optional(),
+  targetDay: z
+    .string()
+    .describe(
+      'Day to search for, e.g. "monday", "tuesday". Defaults to today. Use when the user asks about a future day.'
+    )
+    .optional(),
+  targetTime: z
+    .string()
+    .describe(
+      'Time to search for in HH:MM 24hr format, e.g. "14:00". Defaults to right now. Use when the user asks about a specific time.'
+    )
+    .optional(),
 });
 
 export type SearchResourcesInput = z.infer<typeof SearchResourcesInputSchema>;
