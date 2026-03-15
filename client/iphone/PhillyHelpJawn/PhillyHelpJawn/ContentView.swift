@@ -150,6 +150,8 @@ struct AssistResponse: Decodable {
     let timestamp: String
     let message: String
     let resources: [AssistResource]
+    let crisis: String?
+    let actionPhone: String?
 }
 
 struct AssistResource: Decodable, Identifiable {
@@ -208,7 +210,9 @@ struct MockAssistAPIClient {
           "phone": "215-555-0100",
           "description": null
         }
-      ]
+      ],
+      "crisis": null,
+      "actionPhone": null
     }
     """
 }
@@ -544,6 +548,35 @@ private struct MockResponseView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        if let actionPhone = response.actionPhone,
+                           let actionURL = callURL(from: actionPhone)
+                        {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Link(destination: actionURL) {
+                                    Label(primaryActionLabel(for: response), systemImage: "phone.fill")
+                                        .font(.system(size: 22, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity, minHeight: 68)
+                                        .background(primaryActionColor(for: response))
+                                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                                }
+
+                                if response.crisis == "child_safety",
+                                   actionPhone != "911",
+                                   let emergencyURL = callURL(from: "911")
+                                {
+                                    Link(destination: emergencyURL) {
+                                        Label("Call 911", systemImage: "exclamationmark.triangle.fill")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                            .frame(maxWidth: .infinity, minHeight: 56)
+                                            .background(Color.red)
+                                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    }
+                                }
+                            }
+                        }
+
                         Map(initialPosition: .region(mapRegion)) {
                             ForEach(response.resources) { resource in
                                 Annotation(resource.name, coordinate: resource.coordinate) {
@@ -659,6 +692,29 @@ private struct MockResponseView: View {
         let digits = phone.filter { $0.isNumber || $0 == "+" }
         guard !digits.isEmpty else { return nil }
         return URL(string: "tel://\(digits)")
+    }
+
+    private func primaryActionLabel(for response: AssistResponse) -> String {
+        guard let phone = response.actionPhone else { return "Call" }
+        switch response.crisis {
+        case "suicide":
+            return "Call or Text \(phone)"
+        case "emergency":
+            return "Call \(phone) Now"
+        case "child_safety":
+            return "Call Childline"
+        default:
+            return "Call \(phone)"
+        }
+    }
+
+    private func primaryActionColor(for response: AssistResponse) -> Color {
+        switch response.crisis {
+        case "suicide", "emergency", "child_safety":
+            return .red
+        default:
+            return Color(red: 0.16, green: 0.77, blue: 0.39)
+        }
     }
 }
 
