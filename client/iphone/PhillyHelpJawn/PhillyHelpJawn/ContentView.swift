@@ -65,7 +65,7 @@ struct ContentView: View {
                     .onEnded { _ in
                         speechInput.stopRecording()
                         Task {
-                            await responseViewModel.loadMockResponse()
+                            await responseViewModel.loadResponse(queryText: speechInput.transcript)
                             if responseViewModel.response != nil {
                                 isShowingMockResponse = true
                             }
@@ -100,17 +100,28 @@ final class MockAssistResponseViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    private let liveClient = AssistAPIClient(baseURL: URL(string: "https://phillyhelpjawn-production.up.railway.app")!)
     private let mockClient = MockAssistAPIClient()
+    private let useMockFallback = true
 
-    func loadMockResponse() async {
+    func loadResponse(queryText: String) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
 
         do {
-            response = try mockClient.fetchMockResponse()
+            response = try await liveClient.fetchResponse(queryText: queryText)
         } catch {
-            errorMessage = "Unable to load mock response."
+            if useMockFallback {
+                do {
+                    response = try mockClient.fetchMockResponse()
+                    errorMessage = "Live API unavailable. Showing mock response."
+                } catch {
+                    errorMessage = "Unable to load response."
+                }
+            } else {
+                errorMessage = "Unable to load response."
+            }
         }
     }
 }
@@ -181,6 +192,59 @@ struct MockAssistAPIClient {
       ]
     }
     """
+}
+
+struct AssistAPIClient {
+    let baseURL: URL
+
+    func fetchResponse(queryText: String) async throws -> AssistResponse {
+        let trimmedQuery = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = trimmedQuery.isEmpty ? "I need food help" : trimmedQuery
+
+        let requestBody = AssistQueryRequest(
+            requestId: UUID().uuidString,
+            timestamp: ISO8601DateFormatter().string(from: Date()),
+            inputModality: "voice_ptt",
+            queryText: query,
+            language: "en-US",
+            persona: "primary_low_literacy",
+            client: .init(platform: "ios", appVersion: "0.1.0", buildNumber: "1")
+        )
+
+        guard let endpointURL = URL(string: "/v1/assist/query", relativeTo: baseURL)?.absoluteURL else {
+            throw URLError(.badURL)
+        }
+        var request = URLRequest(url: endpointURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(requestBody)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard (200 ... 299).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+
+        return try JSONDecoder().decode(AssistResponse.self, from: data)
+    }
+}
+
+struct AssistQueryRequest: Encodable {
+    struct Client: Encodable {
+        let platform: String
+        let appVersion: String
+        let buildNumber: String
+    }
+
+    let requestId: String
+    let timestamp: String
+    let inputModality: String
+    let queryText: String
+    let language: String
+    let persona: String
+    let client: Client
 }
 
 final class SpeechOutputManager {
