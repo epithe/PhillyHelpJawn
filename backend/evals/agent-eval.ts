@@ -157,6 +157,20 @@ const EVAL_CASES: EvalCase[] = [
     expectTool: "search_resources",
     expectToolInput: { targetDay: "tuesday" },
   },
+  {
+    suite: "time",
+    name: "job services sunday - tells user when it opens",
+    input: "I need help finding a job",
+    timestamp: "Sunday, March 22, 2026, 2:00 PM",
+    expectTool: "search_resources",
+    // Non-urgent: server returns all results even though closed
+    mockToolResult: [
+      { name: "PA CareerLink", address: "3901 Market St", hours: "Mon-Fri 8am-4:30pm", category: "Job services" },
+      { name: "Dress for Success", address: "1500 Walnut St", hours: "Mon, Wed, Fri 10am-6pm", category: "Job services" },
+    ],
+    expectInMessage: ["Monday"],
+    expectNotInMessage: ["sorry", "211"],
+  },
 ];
 
 // --- Runner ---

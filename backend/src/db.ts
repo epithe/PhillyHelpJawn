@@ -37,8 +37,15 @@ export async function searchResources(
 
   const allResults = data as (Resource & { schedule?: any })[];
 
-  // Filter to resources open at the target time (defaults to now)
-  return allResults.filter((r) =>
-    isOpenAt(r.schedule, { targetDay, targetTime })
-  );
+  // Urgent categories (food, shelter): only return what's open now
+  // Non-urgent categories (job services): return all so Claude can say when they open
+  const isUrgentCategory = !category || /food|shelter/i.test(category);
+
+  if (isUrgentCategory) {
+    return allResults.filter((r) =>
+      isOpenAt(r.schedule, { targetDay, targetTime })
+    );
+  }
+
+  return allResults;
 }
