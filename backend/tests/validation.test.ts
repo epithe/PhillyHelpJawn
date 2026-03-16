@@ -42,12 +42,12 @@ describe("AssistRequestSchema", () => {
     );
   });
 
-  it("rejects unsupported language", () => {
+  it("accepts any language", () => {
     const result = AssistRequestSchema.safeParse({
       ...validBody,
-      language: "fr-FR",
+      language: "es",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejects location with missing lng", () => {

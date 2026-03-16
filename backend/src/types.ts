@@ -33,7 +33,7 @@ export const AssistRequestSchema = z.object({
     .string()
     .min(1, "queryText is required")
     .max(500, "queryText must be 500 characters or fewer"),
-  language: z.literal("en-US", { error: "Only en-US is supported" }),
+  language: z.string(),
   persona: z.string().optional(),
   location: z
     .object({
@@ -66,6 +66,7 @@ export interface AssistResponse {
   resources: ResourceWithDistance[];
   crisis: "suicide" | "emergency" | "child_safety" | null;
   actionPhone: string | null;
+  responseLanguage: string;
 }
 
 export interface ErrorResponse {

@@ -31,6 +31,12 @@ export function getSystemPrompt(context?: PromptContext): string {
 
 CURRENT DATE AND TIME (Philadelphia): ${now}${locationInfo}
 
+LANGUAGE:
+- Detect the language of the user's message. Reply in the SAME language.
+- Start every response with the ISO 639-1 language code in brackets, e.g. [es] or [en]. This will be stripped before reading aloud.
+- Keep organization names, addresses, and phone numbers exactly as they are. Do not translate them.
+- Apply all the rules below regardless of language.
+
 IMPORTANT RULES:
 - Use very simple words and short sentences. Use words a child could understand. Write at a 4th-grade reading level.
 - Be warm and kind. These people may be in a tough spot. Speak as if talking to a friend, not reading from a list.
@@ -158,6 +164,15 @@ export interface AgentResult {
   resources: Resource[];
   crisis: CrisisType | null;
   actionPhone: string | null;
+  responseLanguage: string;
+}
+
+function parseLanguageTag(text: string): { language: string; message: string } {
+  const match = text.match(/^\[([a-z]{2}(?:-[A-Z]{2})?)\]\s*/);
+  if (match) {
+    return { language: match[1], message: text.slice(match[0].length) };
+  }
+  return { language: "en", message: text };
 }
 
 export async function handleQuery(
@@ -246,10 +261,13 @@ export async function handleQuery(
       resources: [],
       crisis: null,
       actionPhone: "211",
+      responseLanguage: "en",
     };
   }
 
-  let message = textBlock?.text ?? "Sorry, I could not find an answer right now.";
+  const rawMessage = textBlock?.text ?? "Sorry, I could not find an answer right now.";
+  const { language: responseLanguage, message: parsed } = parseLanguageTag(rawMessage);
+  let message = parsed;
 
   // Guarantee 211 mention when no resources found
   if (collectedResources.length === 0 && detectedCrisis === null && !message.includes("211")) {
@@ -269,5 +287,6 @@ export async function handleQuery(
     resources: collectedResources,
     crisis: detectedCrisis,
     actionPhone,
+    responseLanguage,
   };
 }

@@ -48,7 +48,7 @@ app.post("/v1/assist/query", async (c) => {
   const req = parsed.data;
 
   try {
-    const { message, resources, crisis, actionPhone } = await handleQuery(req.queryText, {
+    const { message, resources, crisis, actionPhone, responseLanguage } = await handleQuery(req.queryText, {
       location: req.location,
     });
 
@@ -78,6 +78,7 @@ app.post("/v1/assist/query", async (c) => {
       resources: resourcesWithDistance,
       crisis,
       actionPhone,
+      responseLanguage,
     };
 
     return c.json(response);
@@ -90,6 +91,7 @@ app.post("/v1/assist/query", async (c) => {
       resources: [],
       crisis: null,
       actionPhone: null,
+      responseLanguage: "en",
     };
     return c.json(response);
   }
