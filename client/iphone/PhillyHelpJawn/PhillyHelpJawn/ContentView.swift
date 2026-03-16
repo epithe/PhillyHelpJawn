@@ -176,6 +176,7 @@ struct AssistResponse: Decodable {
     let resources: [AssistResource]
     let crisis: String?
     let actionPhone: String?
+    let responseLanguage: String?
 }
 
 struct AssistResource: Decodable, Identifiable {
